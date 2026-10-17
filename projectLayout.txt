@@ -1,0 +1,12 @@
+aei-ward_watch/
+├── data/
+│   ├── raw/              # extracted zip contents
+│   └── processed/        # parquet outputs
+├── scripts/
+│   ├── inspect_data.py   # run this first (see section 5)
+│   └── preprocess.py     # we'll write this after inspecting
+├── app/
+│   └── app.py            # Streamlit UI
+├── requirements.txt
+├── .gitignore
+└── README.md
