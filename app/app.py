@@ -1,0 +1,81 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+from pathlib import Path
+
+PROC = Path("data/processed")
+MIN_N = 30
+
+st.set_page_config(page_title="AEI WardWatch", layout="wide")
+
+
+@st.cache_data
+def load():
+    ab = pd.read_parquet(PROC / "antibiogram.parquet")
+    sig = pd.read_parquet(PROC / "signals.parquet")
+    wk = pd.read_parquet(PROC / "weekly.parquet")
+    return ab, sig, wk
+
+
+ab, sig, wk = load()
+
+st.title("AEI WardWatch")
+st.caption("Rolling, ward-level antibiotic efficacy indicator · last 4 weeks vs. annual baseline")
+
+# ---------------------------------------------------------------- sidebar
+with st.sidebar:
+    st.header("Filters")
+    ward = st.selectbox("Ward", sorted(ab["ward"].astype(str).unique()))
+    specimen = st.selectbox("Specimen", sorted(ab[ab["ward"].astype(str) == ward]["specimen"].astype(str).unique()))
+    organisms = sorted(ab[(ab["ward"].astype(str) == ward) & (ab["specimen"].astype(str) == specimen)]["organism"].astype(str).unique())
+    organism = st.selectbox("Organism", organisms)
+    period = st.radio("Period", ["4w", "annual"], horizontal=True,
+                      format_func=lambda p: "Last 4 weeks" if p == "4w" else "Annual")
+
+mask = (
+    (ab["ward"].astype(str) == ward)
+    & (ab["specimen"].astype(str) == specimen)
+    & (ab["organism"].astype(str) == organism)
+)
+
+# ------------------------------------------------------- anomaly banner
+ward_sig = sig[sig["ward"].astype(str) == ward]
+if len(ward_sig):
+    st.error(f"⚠ {len(ward_sig)} resistance signal(s) on {ward} in the last 4 weeks")
+    with st.expander("Show signals"):
+        st.dataframe(
+            ward_sig[["organism", "antibiotic", "specimen", "n_4w", "pct_r_4w",
+                      "n_base", "pct_r_base", "delta_pct", "z"]]
+            .rename(columns={"pct_r_4w": "%R last 4w", "pct_r_base": "%R baseline",
+                             "delta_pct": "Δ pp", "n_4w": "n 4w", "n_base": "n baseline"}),
+            use_container_width=True, hide_index=True,
+        )
+else:
+    st.success(f"No resistance signals on {ward} in the last 4 weeks")
+
+# -------------------------------------------------------- antibiogram table
+st.subheader(f"Antibiogram — {ward} · {specimen} · {organism}")
+
+view = ab[mask & (ab["period"] == period)].copy()
+view["display"] = view.apply(
+    lambda r: f"{r.pct_r:.1f}%  (n={int(r.n)})" if r.n >= MIN_N else f"Insufficient data (n={int(r.n)})",
+    axis=1,
+)
+table = view[["antibiotic", "display"]].sort_values("antibiotic")
+st.dataframe(table.rename(columns={"display": "Resistance (%R)"}),
+             use_container_width=True, hide_index=True)
+st.caption(f"Minimum {MIN_N} first isolates required for a reliable percentage.")
+
+# --------------------------------------------------------------- trend
+st.subheader("Weekly resistance trend")
+ts = wk[(wk["ward"].astype(str) == ward) & (wk["specimen"].astype(str) == specimen)
+        & (wk["organism"].astype(str) == organism)]
+if len(ts):
+    abx = st.selectbox("Antibiotic", sorted(ts["antibiotic"].astype(str).unique()))
+    t = ts[ts["antibiotic"].astype(str) == abx].sort_values("week")
+    fig = px.line(t, x="week", y="pct_r", markers=True,
+                  labels={"week": "Week", "pct_r": "% resistant"})
+    fig.update_layout(yaxis_range=[0, 100], height=320, margin=dict(t=10, b=10))
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.info("No weekly series for this selection.")
