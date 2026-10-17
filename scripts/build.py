@@ -141,8 +141,8 @@ def main() -> None:
     # ------------------------------------------------------------ aggregate
     keys = ["ward", "specimen", "organism", "antibiotic"]
     max_date = df["date"].max()
-    w4_start = max_date - pd.Timedelta(days=28)
-    y1_start = max_date - pd.Timedelta(days=365)
+    w4_start = max_date - pd.Timedelta(28, unit="D")
+    y1_start = max_date - pd.Timedelta(365, unit="D")
 
     def agg(sub: pd.DataFrame, label: str) -> pd.DataFrame:
         g = sub.groupby(keys, dropna=False).agg(

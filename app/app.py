@@ -57,13 +57,16 @@ else:
 st.subheader(f"Antibiogram — {ward} · {specimen} · {organism}")
 
 view = ab[mask & (ab["period"] == period)].copy()
-view["display"] = view.apply(
-    lambda r: f"{r.pct_r:.1f}%  (n={int(r.n)})" if r.n >= MIN_N else f"Insufficient data (n={int(r.n)})",
-    axis=1,
-)
-table = view[["antibiotic", "display"]].sort_values("antibiotic")
-st.dataframe(table.rename(columns={"display": "Resistance (%R)"}),
-             use_container_width=True, hide_index=True)
+if view.empty:
+    st.info(f"No antibiogram data for {ward} · {specimen} · {organism} in the selected period.")
+else:
+    view["display"] = view.apply(
+        lambda r: f"{r.pct_r:.1f}%  (n={int(r.n)})" if r.n >= MIN_N else f"Insufficient data (n={int(r.n)})",
+        axis=1,
+    )
+    table = view[["antibiotic", "display"]].sort_values("antibiotic")
+    st.dataframe(table.rename(columns={"display": "Resistance (%R)"}),
+                 use_container_width=True, hide_index=True)
 st.caption(f"Minimum {MIN_N} first isolates required for a reliable percentage.")
 
 # --------------------------------------------------------------- trend
