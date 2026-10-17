@@ -1,4 +1,5 @@
 import streamlit as st
+import numpy as np
 import pandas as pd
 import plotly.express as px
 from pathlib import Path
@@ -58,11 +59,13 @@ st.subheader(f"Antibiogram — {ward} · {specimen} · {organism}")
 
 view = ab[mask & (ab["period"] == period)].copy()
 if view.empty:
-    st.info(f"No antibiogram data for {ward} · {specimen} · {organism} in the selected period.")
+    st.warning(f"⚠ No {period} data available for this specific ward/organism combination. Try switching the Period to 'Annual'.")
 else:
-    view["display"] = view.apply(
-        lambda r: f"{r.pct_r:.1f}%  (n={int(r.n)})" if r.n >= MIN_N else f"Insufficient data (n={int(r.n)})",
-        axis=1,
+    # Vectorized string creation avoids pandas apply issues for empty selections.
+    view["display"] = np.where(
+        view["n"] >= MIN_N,
+        view["pct_r"].astype(str) + "%  (n=" + view["n"].astype(int).astype(str) + ")",
+        "Insufficient data (n=" + view["n"].astype(int).astype(str) + ")",
     )
     table = view[["antibiotic", "display"]].sort_values("antibiotic")
     st.dataframe(table.rename(columns={"display": "Resistance (%R)"}),
