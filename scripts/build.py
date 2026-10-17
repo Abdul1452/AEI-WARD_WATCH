@@ -168,25 +168,20 @@ def main() -> None:
 
     # ------------------------------------------------------------- signals
     sig = last4w.merge(baseline, on=keys, suffixes=("_4w", "_base"))
-    
-    # Relaxed thresholds to catch earlier signals
     sig = sig[(sig["n_4w"] >= 5) & (sig["n_base"] >= 20)].copy()
-    
+
     p1 = sig["n_r_4w"] / sig["n_4w"]
     p2 = sig["n_r_base"] / sig["n_base"]
     p = (sig["n_r_4w"] + sig["n_r_base"]) / (sig["n_4w"] + sig["n_base"])
     se = np.sqrt(p * (1 - p) * (1 / sig["n_4w"] + 1 / sig["n_base"]))
+
+    # Calculate Z-score
     sig["z"] = ((p1 - p2) / se.replace(0, np.nan)).round(2)
     sig["delta_pct"] = (sig["pct_r_4w"] - sig["pct_r_base"]).round(1)
-    
-    # Show top 5 deviations in terminal so we can pick a good demo ward
-    print("\n=== TOP 5 DEVIATIONS ===")
-    print(sig[["ward", "organism", "antibiotic", "pct_r_4w", "pct_r_base", "delta_pct", "z"]]
-          .sort_values("z", key=abs, ascending=False).head(5).to_string(index=False))
-    
-    # Filter for display: 90% confidence (|z| >= 1.64)
-    sig = sig[sig["z"].abs() >= 1.64].sort_values("z", key=np.abs, ascending=False)
-    print(f"=== SIGNALS === {len(sig)} strata flagged")
+
+    # Filter for INCREASES in resistance only (z >= 1.28 is ~90% one-tailed confidence)
+    sig = sig[sig["z"] >= 1.28].sort_values("z", ascending=False)
+    print(f"=== SIGNALS === {len(sig)} actionable resistance increases flagged")
 
     # -------------------------------------------------------------- write
     antibiogram.to_parquet(os.path.join(OUT, "antibiogram.parquet"), index=False)

@@ -26,10 +26,20 @@ st.caption("Rolling, ward-level antibiotic efficacy indicator · last 4 weeks vs
 # ---------------------------------------------------------------- sidebar
 with st.sidebar:
     st.header("Filters")
-    ward = st.selectbox("Ward", sorted(ab["ward"].astype(str).unique()))
-    specimen = st.selectbox("Specimen", sorted(ab[ab["ward"].astype(str) == ward]["specimen"].astype(str).unique()))
-    organisms = sorted(ab[(ab["ward"].astype(str) == ward) & (ab["specimen"].astype(str) == specimen)]["organism"].astype(str).unique())
-    organism = st.selectbox("Organism", organisms)
+    wards = sorted(ab["ward"].astype(str).unique())
+    default_ward_idx = wards.index("SURG") if "SURG" in wards else 0
+    ward = st.selectbox("Ward", wards, index=default_ward_idx)
+
+    specs = sorted(ab[ab["ward"].astype(str) == ward]["specimen"].astype(str).unique())
+    target_specimen = "wound"
+    default_spec_idx = specs.index(target_specimen) if target_specimen in specs else 0
+    specimen = st.selectbox("Specimen", specs, index=default_spec_idx)
+
+    orgs = sorted(ab[
+        (ab["ward"].astype(str) == ward) & (ab["specimen"].astype(str) == specimen)
+    ]["organism"].astype(str).unique())
+    default_org_idx = orgs.index("Pseudomonas aeruginosa") if "Pseudomonas aeruginosa" in orgs else 0
+    organism = st.selectbox("Organism", orgs, index=default_org_idx)
     period = st.radio("Period", ["4w", "annual"], horizontal=True,
                       format_func=lambda p: "Last 4 weeks" if p == "4w" else "Annual")
 
