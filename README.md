@@ -98,9 +98,7 @@ Synthetic microbiology dataset provided by the challenge: ~10,000 patients, ~47,
 
 ## Team
 
-- `<Name>` — `<role>`
-- `<Name>` — `<role>`
-- `<Name>` — `<role>`
+- Abdulwasiu Abdullahi Olamilekan — Software Engineer
 
 ## Hackathon Context
 
